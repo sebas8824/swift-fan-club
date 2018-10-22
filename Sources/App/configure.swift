@@ -17,10 +17,13 @@ public func configure(_ config: inout Config, _ env: inout Environment, _ servic
 
     var middlewares = MiddlewareConfig() // Create _empty_ middleware config
     middlewares.use(ErrorMiddleware.self) // Catches errors and converts to HTTP response
+    middlewares.use(SessionsMiddleware.self)
     services.register(middlewares)
 
     // Set up Leaf for rendering the views
     config.prefer(LeafRenderer.self, for: ViewRenderer.self)
+    // Telling Vapor how it will store the data of the sessions
+    config.prefer(MemoryKeyedCache.self, for: KeyedCache.self)
     
     // Set up the database using a file path
     let db = try SQLiteDatabase(storage: .file(path: "\(directoryConfig.workDir)forums.db"))
@@ -34,6 +37,7 @@ public func configure(_ config: inout Config, _ env: inout Environment, _ servic
     var migrations = MigrationConfig()
     migrations.add(model: Forum.self, database: .sqlite)
     migrations.add(model: Message.self, database: .sqlite)
+    migrations.add(model: User.self, database: .sqlite)
     services.register(migrations)
 
 }

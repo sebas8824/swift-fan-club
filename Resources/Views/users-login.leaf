@@ -1,0 +1,16 @@
+#set("title") {Log in}
+
+#set("body") {
+    <h1>Log in</h1>
+    <form method="post">
+        <p>Username: <input type="text" name="username" /></p>
+        <p>Password: <input type="password" name="password" /></p>
+        <p><input type="submit" class="btn btn-lg btn-primary" /></p>
+    </form>
+
+    #if(error) {
+        <p>Username does not exist, please register!</p>
+    }
+}
+
+#embed("master")

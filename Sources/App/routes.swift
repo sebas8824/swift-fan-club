@@ -2,6 +2,7 @@ import Vapor
 import Leaf
 import Fluent
 import FluentSQLite
+import Crypto
 
 public func routes(_ router: Router) throws {
     router.get("setup") { req -> String in
@@ -75,8 +76,55 @@ public func routes(_ router: Router) throws {
             }
         }        
     }
+    
+    router.get("users", "login") { req -> Future<View> in
+        return try req.view().render("users-login")
+    }
+    
+    router.post(User.self, at: "users", "login") { req, user -> Future<View> in
+        return try User.query(on: req)
+            .filter(\.username == user.username)
+            .first().flatMap(to: View.self) { existing in
+                if let existing = existing {
+                    if try BCrypt.verify(user.password, created: existing.password) {
+                        let session = try req.session()
+                        session["username"] = existing.username
+                        
+                        return try req.view().render("users-welcome")
+                    }
+                }
+                
+                return try req.view().render("users-login", ["error": "true"])
+        }
+    }
+    
+    router.get("users", "create") { req -> Future<View> in
+        return try req.view().render("users-create")
+    }
+    
+    router.post("users", "create") { req -> Future<View> in
+        /* Creating and decoding an user instance from the form */
+        var user = try req.content.syncDecode(User.self)
+        
+        return try User.query(on: req)
+            .filter(\.username == user.username)
+            .first().flatMap(to: View.self) { existing in
+                /* If there is no username already taken, it is needed to encrypt the password */
+                if existing == nil {
+                    user.password = try BCrypt.hash(user.password)
+                    /* Saving the user instance on the DB and redirecting to the users-welcome page */
+                    return user.save(on: req).flatMap(to: View.self) { user in
+                        return try req.view().render("users-welcome")
+                    }
+                } else {
+                /* Otherwise we send and error flag for the page to render its proper message to the user */
+                    return try req.view().render("users-create", ["error": "true"])
+                }
+            }
+    }
 }
 
 func getUsername(_ req: Request) -> String? {
-    return "testing"
+    let session = try? req.session()
+    return session?["username"]
 }
