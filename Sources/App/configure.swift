@@ -1,5 +1,6 @@
 import FluentSQLite
 import Vapor
+import Leaf
 
 /// Called before your application initializes.
 public func configure(_ config: inout Config, _ env: inout Environment, _ services: inout Services) throws {
@@ -8,7 +9,8 @@ public func configure(_ config: inout Config, _ env: inout Environment, _ servic
     services.register(directoryConfig)
     
     try services.register(FluentSQLiteProvider())
-
+    try services.register(LeafProvider())
+    
     let router = EngineRouter.default()
     try routes(router)
     services.register(router, as: Router.self)
@@ -17,6 +19,9 @@ public func configure(_ config: inout Config, _ env: inout Environment, _ servic
     middlewares.use(ErrorMiddleware.self) // Catches errors and converts to HTTP response
     services.register(middlewares)
 
+    // Set up Leaf for rendering the views
+    config.prefer(LeafRenderer.self, for: ViewRenderer.self)
+    
     // Set up the database using a file path
     let db = try SQLiteDatabase(storage: .file(path: "\(directoryConfig.workDir)forums.db"))
 
