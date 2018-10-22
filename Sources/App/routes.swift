@@ -50,6 +50,31 @@ public func routes(_ router: Router) throws {
             }
         }
     }
+    
+    router.get("forum", Int.parameter, Int.parameter) { req -> Future<View> in
+        let forumID = try req.parameters.next(Int.self)
+        let messageID = try req.parameters.next(Int.self)
+        
+        /* Look up in Forums what was requested */
+        return try Forum.find(forumID, on: req).flatMap(to: View.self) {
+            forum in
+            guard let forum = forum else { throw Abort(.notFound) }
+            
+            return try Message.find(messageID, on: req).flatMap(to: View.self) {
+                message in
+                guard let message = message else { throw Abort(.notFound) }
+                
+                let query = try Message.query(on: req)
+                    .filter(\.parent == message.id!)
+                    .all()
+                
+                return query.flatMap(to: View.self) { replies in
+                    let context = MessageContext(username: getUsername(req), forum: forum, message: message, replies: replies)
+                    return try req.view().render("message", context)
+                }
+            }
+        }        
+    }
 }
 
 func getUsername(_ req: Request) -> String? {
